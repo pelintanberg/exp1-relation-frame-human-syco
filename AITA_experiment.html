@@ -224,6 +224,11 @@ Contact: pelin.tan@utoronto.ca
 
     var credit_url = CREDIT_URLS[study_condition];
 
+    var EXPERIMENT_IDS = {
+      stranger: "6vFcOODDcrqo",
+      friend: "LaEtDTneKxa1",
+    };
+
     /* ############################################################################
                 WELCOME PAGE & BOT CHECK
     ############################################################################ */
@@ -764,7 +769,7 @@ Contact: pelin.tan@utoronto.ca
     var checkpoint_save = {
       type: jsPsychPipe,
       action: "save",
-      experiment_id: "Rpgv1qRXBnmP",
+      experiment_id: EXPERIMENT_IDS[study_condition],
       filename: prolific_random_id + "_checkpoint.csv",
       data_string: () => jsPsych.data.get().csv(),
     };
@@ -925,14 +930,14 @@ Contact: pelin.tan@utoronto.ca
     ############################################################################ */
 
     // Give time to save data
-
     var save_data = {
       type: jsPsychPipe,
       action: "save",
-      experiment_id: "Rpgv1qRXBnmP",
+      experiment_id: EXPERIMENT_IDS[study_condition],
       filename: prolific_random_id + ".csv",
       data_string: () => jsPsych.data.get().csv(),
     };
+
     var second_to_last_trial = {
       type: jsPsychHtmlKeyboardResponse,
       stimulus:
