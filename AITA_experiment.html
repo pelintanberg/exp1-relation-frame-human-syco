@@ -1,0 +1,1017 @@
+<!--
+This file contains the main file for running the Sycophancy in Humans
+Experiment using the JSPsych library 7.3.1.
+
+This code pertains to the Exp 1: AITA ratings by humans depending on relationship
+(judge condition vs. friend condition, between-subjects).
+
+Author: Pelin Tanberg
+Date: 17th August 2026
+Contact: pelin.tan@utoronto.ca
+-->
+
+<!doctype html>
+<html>
+  <head>
+    <title>AITA Judgment Study</title>
+    <meta charset="UTF-8" />
+    <!-- CSS stuff -->
+    <link
+      href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- DataPipe -->
+    <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
+
+    <!-- jsPsych packages -->
+    <script src="jspsych-7.3/dist/jspsych.js"></script>
+    <script src="jspsych-7.3/dist/plugin-html-button-response.js"></script>
+    <script src="jspsych-7.3/dist/plugin-html-keyboard-response.js"></script>
+    <script src="jspsych-7.3/dist/plugin-html-slider-response.js"></script>
+    <script src="jspsych-7.3/dist/plugin-survey-text.js"></script>
+    <script src="jspsych-7.3/dist/plugin-survey-html-form.js"></script>
+    <script src="jspsych-7.3/dist/plugin-external-html.js"></script>
+    <script src="jspsych-7.3/dist/plugin-instructions.js"></script>
+    <script src="jspsych-7.3/dist/plugin-survey-multi-select.js"></script>
+    <script src="jspsych-7.3/dist/plugin-survey-likert.js"></script>
+    <script src="jspsych-7.3/dist/plugin-fullscreen.js"></script>
+    <script src="jspsych-7.3/dist/plugin-survey-multi-choice.js"></script>
+
+    <script src="lists_and_functions/functions.js"></script>
+    <script src="lists_and_functions/countingLoops.js"></script>
+    <script src="lists_and_functions/Plugin_Timeout2.js"></script>
+    <script
+      src="lists_and_functions/free-recall-7.js"
+      type="text/javascript"
+    ></script>
+    <script src="AITA_stim.js"></script>
+  </head>
+  <style>
+    :root {
+      --ink: #1f2430;
+      --muted: #5b6472;
+      --accent: #3a5a9b;
+      --accent-dark: #2c4478;
+      --bg: #f7f8fb;
+      --card-bg: #ffffff;
+      --border: #dfe3ea;
+    }
+
+    html,
+    body {
+      background-color: var(--bg);
+      color: var(--ink);
+    }
+
+    body {
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+        sans-serif;
+      font-size: 20px;
+      line-height: 1.6;
+    }
+
+    .jspsych-display-element {
+      min-height: 100vh;
+      font-family: "Open Sans", "Arial", sans-serif;
+      font-size: 20px;
+      line-height: 1.6em;
+    }
+
+    .jspsych-content {
+      max-width: 720px;
+      margin: auto;
+    }
+
+    p {
+      margin: 0 0 1.75em 0;
+      text-align: center;
+    }
+
+    /* Scenario post card */
+    .aita-post {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 32px;
+      text-align: left;
+      font-size: 20px;
+      line-height: 1.65;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      margin-bottom: 8px;
+    }
+
+    .poster-tag {
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+
+    .jspsych-btn {
+      background-color: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 22px;
+      font-size: 16px;
+      margin: 6px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .jspsych-btn:hover {
+      background-color: var(--accent-dark);
+    }
+
+    .jspsych-btn:disabled {
+      background-color: #b7bfcc;
+      cursor: not-allowed;
+    }
+
+    textarea,
+    input[type="text"] {
+      font-family: inherit;
+      font-size: 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+    }
+  </style>
+  <body></body>
+  <script>
+    /* ############################################################################
+                INITIALIZE JSPSYCH
+    ############################################################################ */
+    var jsPsych = initJsPsych({
+      override_safe_mode: true,
+      on_finish: function () {
+        jsPsych.data.displayData("csv");
+      },
+    });
+
+    /* ############################################################################
+                PARTICIPANT ID COLLECTION - PROLIFIC
+    ############################################################################ */
+
+    /* Create variables for each participant */
+    var subject_id = getQueryVariable("PROLIFIC_PID");
+    var study_id = getQueryVariable("STUDY_ID");
+    var session_id = getQueryVariable("SESSION_ID");
+    var credit_url =
+      "https://app.prolific.com/submissions/complete?cc=COCL8AOW"; // update this when you create Prolific study
+    var randomizer_id = jsPsych.randomization.randomID(6);
+
+    var prolific_random_id = subject_id + "_" + randomizer_id;
+
+    /* Add participant Prolific Random ID to data */
+    jsPsych.data.addProperties({
+      subject_id: subject_id,
+      study_id: study_id,
+      session_id: session_id,
+      randomizer_id: randomizer_id,
+    });
+
+    /* ############################################################################
+                CONDITION ASSIGNMENT: JUDGE vs. FRIEND
+    ############################################################################ */
+    /* Between-subjects manipulation: each participant is assigned to ONE
+               condition and stays in it for the whole study.
+                 - "judge": the poster is a stranger; participant judges them the
+                   way people do on Reddit's AITA community.
+                 - "friend": the poster is imagined as one of the participant's
+                   own close friends, personally confiding the situation to them.
+
+               For piloting/testing, force a condition with ?condition=judge
+               (or ?condition=friend) in the URL. Otherwise participants are
+               assigned at random with equal probability. */
+    var STUDY_CONDITIONS = ["judge", "friend"];
+
+    var study_condition = getQueryVariable("condition");
+    if (STUDY_CONDITIONS.indexOf(study_condition) === -1) {
+      study_condition = jsPsych.randomization.sampleWithoutReplacement(
+        STUDY_CONDITIONS,
+        1,
+      )[0];
+    }
+
+    /* Short label shown above every scenario, and the phrase used when
+               referring to the poster in the judgment questions. Keeping these
+               in one place means the manipulation only needs to be changed here
+               if the wording needs to change later. */
+    var CONDITION_TEXT = {
+      judge: {
+        posterTag: "A stranger tells you:",
+        target: "stranger",
+      },
+      friend: {
+        posterTag: "Your friend tells you:",
+        target: "friend",
+      },
+    };
+
+    jsPsych.data.addProperties({
+      study_condition: study_condition,
+    });
+
+    /* ############################################################################
+                WELCOME PAGE & BOT CHECK
+    ############################################################################ */
+
+    var welcome_screen = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus:
+        "<p> Welcome to our study! </p><br><p>Please be sure to locate yourself in a quiet area.</p> <p>Your full attention is required for the next 20 minutes.</p> <br> <p> If possible, please ensure that you are using either Google Chrome or Safari as your browser.</p> <br> <p>Press SPACE bar to begin the task.</p>",
+      choices: [" "],
+    };
+
+    var bot_check = {
+      type: jsPsychSurveyText,
+      questions: [
+        {
+          prompt: `<p> Please type the sentence below in the box. When you are done, you can click CONTINUE to begin the study.</p>
+                        <p> The quick brown fox jumps over the lazy dog </p>`,
+          rows: 7,
+          columns: 50,
+          required: true,
+        },
+      ],
+    };
+
+    var enterscreen = {
+      type: jsPsychFullscreen,
+      fullscreen_mode: true,
+    };
+
+    /* ############################################################################
+                CONSENT
+    ############################################################################ */
+    /* Check if consent was given. If not, abort experiment */
+    var check_consent = function (elem) {
+      if (document.getElementById("consent_checkbox").checked) {
+        return true;
+      } else {
+        alert(
+          "If you wish to participate, you must check the box next to the statement 'Yes, I consent to the future use of my deidentified data'",
+        );
+        return false;
+      }
+      return false;
+    };
+
+    /* NOTE: ICL_Offload.html is the consent form from the earlier
+               offloading/word-list study. It needs to be swapped for an
+               AITA-study-specific consent form before this goes live. */
+    var information_consent = {
+      type: jsPsychExternalHtml,
+      url: "ICL_RelationSyco.html",
+      cont_btn: "start",
+      check_fn: check_consent,
+    };
+
+    /* ############################################################################
+                DEMOGRAPHICS
+    ############################################################################ */
+    /*Gather Prolific ID manually for back-up to grant credit*/
+    var PROLIFIC_ID = {
+      type: jsPsychSurveyText,
+      questions: [
+        { prompt: "Please type your PROLIFIC ID below.", required: true },
+      ],
+      // store the response
+      data: { trial_kind: "PROLIFIC_ID" },
+    };
+
+    /* Demographic questionnaire */
+
+    var demographic_begin = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus:
+        "<div>Next, we will ask you some questions regarding demographics.</div>",
+      choices: "NO_KEYS",
+      trial_duration: 3000,
+    };
+    var question_age = {
+      type: jsPsychSurveyText,
+      questions: [
+        {
+          prompt: "How old are you?",
+          rows: 1,
+          columns: 20,
+          name: "age",
+          required: true,
+        },
+      ],
+      button_label: "Continue",
+      data: { question_type: "demographic" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.age = dat.response["age"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var scale_gender = [
+      "Woman / Transwoman",
+      "Man / Transman",
+      "Gender queer / Gender non-conforming / Gender non-binary",
+      "Two-Spirited",
+      "I prefer not to answer",
+    ];
+
+    var question_gender = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [
+        {
+          prompt: "<strong>With which gender do you identify?</strong>",
+          options: scale_gender,
+          name: "gender",
+          required: true,
+        },
+      ],
+      button_label: "Continue",
+      data: { question_type: "demographic" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.gender = dat.response["gender"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var scale_ethnicity = [
+      "Black/African (e.g., Haitian, Jamaican, Somali)",
+      "White/European (e.g., Irish, Swedish, Italian)",
+      "Arab or West Asian (e.g., Armenian, Egyptian, Iranian, Lebanese, Moroccan) ",
+      "East Asian (e.g., Chinese, Japanese, Korean)",
+      "South Asian (e.g., East Indian, Pakistani, Punjabi, Sri Lankan)",
+      "Southeast Asian (e.g, Cambodian, Indonesian, Laotian)",
+      "Indigenous (e.g., First Nations, Metis, Inuit, American Indian, Alaska Native, Native Hawaiian, or Pacific Islander)",
+      "Latin American/Hispanic (e.g., Mexican, Venezuelan, Cuban)",
+      "I prefer not to answer",
+      "I prefer to specify: Please describe your racial/ethnic background by typing into the box in the next question",
+    ];
+
+    var question_ethnicity = {
+      type: jsPsychSurveyMultiSelect,
+      questions: [
+        {
+          prompt:
+            "<strong>What racial or ethnic groups best describe you? (select all that apply)</strong> ",
+          options: scale_ethnicity,
+          name: "ethnicity",
+          required: true,
+        },
+      ],
+      button_label: "Continue",
+      data: { question_type: "demographic" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.ethnicity = dat.response["ethnicity"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var scale_degree = [
+      "No high school",
+      "Some high school, no diploma",
+      "High school diploma or GED equivalent",
+      "Some university/college, no degree",
+      "Associate (2-year) degree",
+      "Bachelor’s (4-year) degree",
+      "Master’s degree",
+      "Doctorate degree",
+      "I prefer not to answer",
+    ];
+
+    var question_degree = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [
+        {
+          prompt:
+            "<strong>What is your highest level of education completed?</strong> ",
+          options: scale_degree,
+          name: "degree",
+          required: true,
+        },
+      ],
+      button_label: "Continue",
+      data: { question_type: "demographic" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.degree = dat.response["degree"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var demographics = {
+      timeline: [
+        question_age,
+        question_gender,
+        question_ethnicity,
+        question_degree,
+      ],
+    };
+
+    /* ############################################################################
+                TASK INSTRUCTIONS + CONDITION FRAMING MANIPULATION
+    ############################################################################ */
+    /* Generic overview: identical for both conditions. */
+    var instructions_overview = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `
+                    <p>Thank you for taking part in this study.</p>
+                    <p>In this task, you will read a series of short posts. <br> In each post, someone describes a disagreement or conflict they were involved in and asks whether they were in the wrong.</p>
+                    <p>After reading each post, we will ask for your honest opinion about the situation. <p> There are no right or wrong answers. We are interested in your judgment of the situation.</p>
+                    <p>Press the SPACE bar to continue.</p>
+                `,
+      choices: [" "],
+    };
+
+    /* --- JUDGE CONDITION: framing manipulation ---
+               A neutral "imagine and evaluate" warm-up (rating something
+               impersonal, not a person), so both conditions do an equivalent
+               amount of imagining-and-writing before the framing is set. */
+    var judge_framing_writein = {
+      type: jsPsychSurveyText,
+      questions: [
+        {
+          prompt: `<p>Before you begin, think of a time you came across a stranger's personal situation online. For example, you could have encountered this in a comment section of an online post, a "storytime" video on TikTok or Instagram, or a post where a stranger shared something personal and asked what people thought.</p>
+                        <p>In the box below, describe how you typically react in moments like this. What kinds of thoughts or opinions tend to come up for you when you're reacting to someone you don't know and have no personal connection to?</p>`,
+          rows: 5,
+          columns: 60,
+          required: true,
+        },
+      ],
+      button_label: "Continue",
+      data: { trial_kind: "condition_framing_writein" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.condition_framing_writein = dat.response["Q0"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var judge_framing_role = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `
+                    <p>For the rest of this study, you will read situations that were written by strangers: people you have never met and know nothing about.</p>
+                    <p>Your task is to <b>evaluate their behaviour</b> and to decide whether what the stranger described in the situation was right or wrong, and whether their actions in the situation were justified.</p>
+                    <p>Press the SPACE bar to continue.</p>
+                `,
+      choices: [" "],
+    };
+
+    var judge_condition_framing = {
+      timeline: [judge_framing_writein, judge_framing_role],
+    };
+
+    /* --- FRIEND CONDITION: framing manipulation ---
+               Participants imagine and briefly describe a real close friend,
+               then are told to picture that friend as the one confiding each
+               situation to them. */
+    var friend_framing_writein = {
+      type: jsPsychSurveyText,
+      questions: [
+        {
+          prompt: `<p>Before you begin, please think of one of your close friends, someone you feel you know well and feel close to.</p>
+                        <p>Without using their full name, briefly describe your friendship below: how you know each other, what makes you feel close to them and the topic of the last conversation you had with them. </p>`,
+          rows: 5,
+          columns: 60,
+          required: true,
+        },
+      ],
+      button_label: "Continue",
+      data: { trial_kind: "condition_framing_writein" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.condition_framing_writein = dat.response["Q0"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var friend_framing_role = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `
+                    <p>For the rest of this study, please picture the friend you just described.</p>
+                    <p>Imagine that each situation you are about to read is something this friend is personally telling you, asking for your honest opinion: the way a friend would confide in you in real life.</p>
+                    <p> Your task is to evaluate their behaviour and to decide whether what your friend described in the situation was right or wrong, and whether their actions in the situation were justified. </p>
+                    <p>Press the SPACE bar to continue.</p>
+                `,
+      choices: [" "],
+    };
+
+    var friend_condition_framing = {
+      timeline: [friend_framing_writein, friend_framing_role],
+    };
+
+    /* study_condition is resolved before jsPsych.run(), so we can pick
+               the right framing timeline directly (no conditional_function
+               needed). */
+    var condition_framing_timeline =
+      study_condition === "friend"
+        ? friend_condition_framing.timeline
+        : judge_condition_framing.timeline;
+
+    /* Generic trial-procedure walkthrough: identical for both conditions. */
+    var instructions_procedure = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `
+                    <p>Here is what will happen on each trial:</p>
+                    <p><b> 1. </b> You will read a short post describing the situation.</p>
+                    <p><b> 2. </b> You will indicate whether you think the actions described were justified.</p>
+                    <p><b> 3. </b> You will briefly explain, in your own words, why you made that judgment.</p>
+                    <p>Please read each post carefully and take your time.</p>
+                    <p>Press the SPACE bar to continue.</p>
+                `,
+      choices: [" "],
+    };
+
+    var instructions_begin = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: function () {
+        var target =
+          study_condition === "friend" ? "your friend's" : "the stranger's";
+        return `
+                        <p><b>You are now ready to begin.</b></p>
+                        <p>Remember: you are evaluating ${target} actions in the situation they are describing.</p>
+                        <p>Press the SPACE bar to begin.</p>
+                    `;
+      },
+      choices: [" "],
+    };
+
+    var task_instructions = {
+      timeline: [instructions_overview]
+        .concat(condition_framing_timeline)
+        .concat([instructions_procedure, instructions_begin]),
+    };
+
+    /* ############################################################################
+                EXPERIMENTAL TRIALS
+    ############################################################################ */
+    /* DURATION SET UP */
+    // stimulus durations in ms
+    const DURATIONS = {
+      SCENARIO: 10000, //10000 -- minimum time before "Continue" becomes clickable
+      FIXATION: 500, //500
+      PAUSE: 500,
+      LONG_PAUSE: 2000,
+    };
+
+    /* Pause between phases & sections */
+    var pause = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: '<div style="font-size:40px;">  </div>',
+      choices: "NO_KEYS",
+      trial_duration: DURATIONS.PAUSE,
+    };
+
+    var long_pause = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: '<div style="font-size:40px;">  </div>',
+      choices: "NO_KEYS",
+      trial_duration: DURATIONS.LONG_PAUSE,
+    };
+
+    /* AITA Scenario: participants must view the post for at least
+               DURATIONS.SCENARIO ms (button is disabled until then), then can
+               continue at their own pace. This replaces the old two-trial
+               forced-view + self-paced sequence, which showed the identical
+               post twice in a row. */
+    var AITA_scenario = {
+      timeline: [
+        {
+          type: jsPsychHtmlButtonResponse,
+          stimulus: function () {
+            var cond = CONDITION_TEXT[study_condition];
+            return (
+              `<p class="poster-tag">${cond.posterTag}</p>` +
+              `<div class="aita-post">` +
+              jsPsych.timelineVariable("post_text") +
+              `</div>`
+            );
+          },
+          choices: ["Continue"],
+          enable_button_after: DURATIONS.SCENARIO,
+
+          data: {
+            trial_kind: "AITA_rating",
+            AITA_scenario: jsPsych.timelineVariable("post_text"),
+            reddit_verdict: jsPsych.timelineVariable("verdict"),
+          },
+          on_finish: function () {
+            /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+          },
+        },
+      ],
+    };
+
+    /* Action Endorsement: wording adapts to who the poster is
+               ("your friend" vs. "this person"). */
+    /* Action Endorsement: wording adapts to who the poster is
+   ("your friend" vs. "this person"). Tagged with question_type:
+   "Action_Endorsement" so the effort question right after it can
+   reliably look up exactly this response (not any other AITA_rating
+   trial from this same round). */
+    var AITA_Action_Endorsement = {
+      timeline: [
+        {
+          type: jsPsychHtmlButtonResponse,
+          stimulus: function () {
+            var target = CONDITION_TEXT[study_condition].target;
+            return `<p>Do you think ${target}'s actions in this situation were justified?</p>`;
+          },
+          choices: ["Yes: Justified", "No: Not Justified"],
+
+          data: {
+            trial_kind: "AITA_rating",
+            question_type: "Action_Endorsement",
+            AITA_scenario: jsPsych.timelineVariable("post_text"),
+            reddit_verdict: jsPsych.timelineVariable("verdict"),
+          },
+          save_trial_parameters: {
+            choices: true,
+          },
+        },
+      ],
+    };
+
+    /* Effort of the judgment: how effortful was it to decide to endorse
+   or reject the target's actions. Placed immediately after the
+   endorsement decision (before the free-text justification), so the
+   rating reflects the effort of making the call itself rather than
+   the effort of writing the justification. Wording reflects back
+   the participant's own just-made choice ("were justified" /
+   "were not justified"), pulled from the Action_Endorsement trial
+   that immediately preceded it. */
+    var AITA_Effort = {
+      timeline: [
+        {
+          type: jsPsychHtmlSliderResponse,
+          stimulus: function () {
+            var target = CONDITION_TEXT[study_condition].target;
+            var lastEndorsement = jsPsych.data
+              .get()
+              .filter({ question_type: "Action_Endorsement" })
+              .last(1)
+              .values()[0];
+            var verdictText =
+              lastEndorsement.response === 0
+                ? "were justified"
+                : "were not justified";
+            return `<p>How much effort did it take for you to decide that ${target}'s actions ${verdictText}?</p>`;
+          },
+          labels: ["No effort at all", "Extreme effort"],
+          /*min: 1,
+        max: 7,
+        step: 1,*/
+          slider_start: 50,
+          require_movement: true,
+          data: {
+            trial_kind: "AITA_rating",
+            question_type: "Effort",
+            AITA_scenario: jsPsych.timelineVariable("post_text"),
+            reddit_verdict: jsPsych.timelineVariable("verdict"),
+          },
+          on_finish: function () {
+            var dat = jsPsych.data.getLastTrialData().values()[0];
+            dat.Effort_Rating = dat.response;
+          },
+        },
+      ],
+    };
+
+    /* Free Form: Justify Verdict.
+               Wording also adapts to who the poster is, and this trial now
+               actually saves its response (previously it had no data tag and
+               was never written to the CSV). */
+    var freeForm_ActionEndorsement = {
+      type: jsPsychSurveyText,
+      questions: function () {
+        var target = CONDITION_TEXT[study_condition].target;
+        return [
+          {
+            prompt: `In a few sentences, please explain why you decided ${target}'s actions were or were not justified.`,
+            rows: 5,
+            columns: 60,
+            required: true,
+          },
+        ];
+      },
+      data: {
+        trial_kind: "AITA_rating",
+        AITA_scenario: jsPsych.timelineVariable("post_text"),
+        reddit_verdict: jsPsych.timelineVariable("verdict"),
+      },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.AITA_justification_text = dat.response["Q0"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var AITA_Empathy = {
+      timeline: [
+        {
+          type: jsPsychHtmlSliderResponse,
+          stimulus: function () {
+            var target = CONDITION_TEXT[study_condition].target;
+            return `<p>How much empathy do you feel for ${target} in this situation?</p>`;
+          },
+          labels: ["Not at all", "Extremely"],
+          /*min: 1,
+            max: 7,
+            step: 1,*/
+          slider_start: 50,
+          require_movement: true,
+          data: {
+            trial_kind: "AITA_rating",
+            question_type: "Empathy",
+            AITA_scenario: jsPsych.timelineVariable("post_text"),
+            reddit_verdict: jsPsych.timelineVariable("verdict"),
+          },
+          on_finish: function () {
+            var dat = jsPsych.data.getLastTrialData().values()[0];
+            dat.Empathy_Rating = dat.response;
+            /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+          },
+        },
+      ],
+    };
+
+    var AITA_judgment_trial = {
+      timeline: [
+        pause,
+        AITA_scenario,
+        AITA_Action_Endorsement,
+        AITA_Effort,
+        freeForm_ActionEndorsement,
+        AITA_Empathy,
+      ],
+      timeline_variables: AITA_Stim_10,
+    };
+
+    var checkpoint_save = {
+      type: jsPsychPipe,
+      action: "save",
+      experiment_id: "Rpgv1qRXBnmP",
+      filename: prolific_random_id + "_checkpoint.csv",
+      data_string: () => jsPsych.data.get().csv(),
+    };
+
+    /* ############################################################################
+                POST-EXPERIMENT QUESTIONNAIRE
+    ############################################################################ */
+    var testing_concluded = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus:
+        "<p><b>You have viewed all of the scenarios.</b></p><p>Now, we would like you to answer a few final questions.</p><p>Press the SPACE bar to continue. </p>",
+      choices: [" "],
+    };
+
+    /* Comprehension / manipulation check: did the participant retain
+               which role/relationship they were assigned throughout the study? */
+    var comprehension_check = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [
+        {
+          prompt:
+            "Throughout this study, who did you imagine the situations were being told to you by?",
+          options: ["A stranger posting online", "One of my own close friends"],
+          name: "comprehension",
+          required: true,
+        },
+      ],
+      button_label: "Next",
+      data: { question_type: "Comprehension_Check" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.Comprehension_Check = dat.response["comprehension"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    /* Closeness manipulation check (single-item, IOS-style). */
+    var closeness_check = {
+      type: jsPsychHtmlSliderResponse,
+      stimulus:
+        "<p>How close do you feel to the person in the situations you just read?</p>",
+      labels: ["Not at all close", "Extremely close"],
+      /*min: 1,
+        max: 7,
+        step: 1,*/
+      slider_start: 50,
+      require_movement: true,
+      data: { question_type: "Closeness_Check" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.Closeness_Check = dat.response;
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var objectivity_check = {
+      type: jsPsychHtmlSliderResponse,
+      stimulus:
+        "<p>Overall, how objective do you think your judgments of these situations were?</p>",
+      labels: ["Not at all objective", "Extremely objective"],
+      /*min: 1,
+        max: 7,
+        step: 1,*/
+      slider_start: 50,
+      require_movement: true,
+      data: { question_type: "Objectivity_Check" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.Objectivity_Check = dat.response;
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    /* AITA/Reddit familiarity (potential covariate, especially for the
+               judge condition, which explicitly invokes Reddit's AITA community). */
+    var scale_aita_familiarity = [
+      "Never heard of it",
+      "Heard of it but never read it",
+      "Read it occasionally",
+      "Read it regularly",
+      "I post there myself",
+    ];
+
+    var aita_familiarity = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [
+        {
+          prompt: `How familiar were you with the "Am I the A**hole" (AITA) community on Reddit, before this study?`,
+          options: scale_aita_familiarity,
+          name: "aita_familiarity",
+          required: true,
+        },
+      ],
+      button_label: "Next",
+      data: { question_type: "AITA_Familiarity" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.AITA_Familiarity = dat.response["aita_familiarity"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    /* DATA QUALITY AND OPTION TO WITHDRAW */
+    var options_yesno = ["Yes", "No"];
+    var options_use_data = [
+      "You may use my data.",
+      "I wish to withdraw my consent.",
+    ];
+
+    var data_exclusion = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [
+        {
+          prompt:
+            "Were you doing anything else while completing this task? (e.g. Netflix, music, other)",
+          options: options_yesno,
+          required: true,
+        },
+        {
+          prompt: "Did you follow directions to the best of your ability?",
+          options: options_yesno,
+          required: true,
+        },
+        {
+          prompt: "Do we still have your permission to use your data?",
+          options: options_use_data,
+          required: true,
+        },
+      ],
+      button_label: "Next",
+      data: { question_type: "Data_Exclusion" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.distracted = dat.response["Q0"];
+        dat.follow_dir = dat.response["Q1"];
+        dat.dataQUse = dat.response["Q2"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var post_questionnaire = {
+      timeline: [
+        testing_concluded,
+        comprehension_check,
+        pause,
+        closeness_check,
+        pause,
+        objectivity_check,
+        pause,
+        aita_familiarity,
+        pause,
+        data_exclusion,
+      ],
+    };
+
+    /* ############################################################################
+                ENDING EXPERIMENT
+    ############################################################################ */
+
+    // Give time to save data
+
+    var save_data = {
+      type: jsPsychPipe,
+      action: "save",
+      experiment_id: "Rpgv1qRXBnmP",
+      filename: prolific_random_id + ".csv",
+      data_string: () => jsPsych.data.get().csv(),
+    };
+    var second_to_last_trial = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus:
+        "Please wait while relevant responses are transmitted to the server.",
+      choices: "NO_KEYS",
+      trial_duration: 5000,
+      on_load: function () {
+        //saveData(id + "_interaction.csv", jsPsych.data.getInteractionData().csv());
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var end_thanks = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `<p> <b> This is the end of the study. </b></p>
+                    <p> Thank you for choosing to participate in our study. </p>
+                    <p> Press space bar to view the feedback letter. </p>`,
+      choices: [" "],
+    };
+
+    /* NOTE: FL_OffloadTest.html is the debrief/feedback letter from the
+               earlier offloading/word-list study. It needs to be swapped for an
+               AITA-study-specific debrief before this goes live. */
+    var feedback_letter = {
+      type: jsPsychExternalHtml,
+      url: "FL_RelationSyco.html",
+      cont_btn: "start",
+    };
+
+    // Exit Fullscreen
+    var exitscreen = {
+      type: jsPsychFullscreen,
+      fullscreen_mode: false,
+      delay_after: 0,
+    };
+
+    // Show credit
+    var credit_trial = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: function () {
+        return `<p>Thanks for your participation.</p><p><a href='${credit_url}'><b>Please click here to return to PROLIFIC and complete the experiment.</b></a></p>`;
+      },
+      choices: "NO_KEYS",
+    };
+
+    /* ############################################################################
+                EXPERIMENT JSPSYCH COMPLETE TIMELINE
+    ############################################################################ */
+
+    var timeline = [
+      /*** EXPERIMENTAL ADMIN STUFF ***/
+      welcome_screen,
+      bot_check,
+      information_consent,
+      enterscreen,
+      PROLIFIC_ID,
+      demographics,
+      pause,
+
+      /*** INSTRUCTIONS + CONDITION FRAMING ***/
+
+      task_instructions,
+      pause,
+
+      /*** AITA JUDGMENT TRIALS ***/
+
+      AITA_judgment_trial,
+      checkpoint_save,
+      pause,
+
+      /*** POST-EXPERIMENT QUESTIONNAIRE ***/
+
+      post_questionnaire,
+
+      /*** ENDING EXPERIMENT ***/
+
+      save_data,
+      second_to_last_trial,
+      end_thanks,
+      feedback_letter,
+      exitscreen,
+      credit_trial,
+    ];
+
+    jsPsych.run(timeline);
+  </script>
+</html>
