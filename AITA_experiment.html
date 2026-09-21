@@ -200,11 +200,14 @@ Contact: pelin.tan@utoronto.ca
           params: {
             experiment_id: EXPERIMENT_IDS[study_condition],
             filename: () => prolific_random_id + ".csv",
+            format: "csv",
           },
         },
       ],
       on_finish: function () {
-        jsPsych.data.displayData("csv");
+        setTimeout(function () {
+          window.location.href = credit_url;
+        }, 2000);
       },
     });
 
@@ -947,11 +950,10 @@ Contact: pelin.tan@utoronto.ca
     // Show credit
     var credit_trial = {
       type: jsPsychHtmlKeyboardResponse,
-      stimulus: function () {
-        return `<p>Thanks for your participation.</p><p><a href='${credit_url}'><b>Please click here to return to PROLIFIC and complete the experiment.</b></a></p>`;
-      },
+      stimulus:
+        "<p>Thanks for your participation.</p><p>Saving your responses, please wait, you will be redirected automatically.</p>",
       choices: "NO_KEYS",
-      trial_duration: 30000
+      trial_duration: 3000,
     };
 
     /* ############################################################################
