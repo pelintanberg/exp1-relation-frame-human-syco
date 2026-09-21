@@ -23,7 +23,7 @@ Contact: pelin.tan@utoronto.ca
     />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <!-- DataPipe -->
-    <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe/dist/index.browser.min.js"></script>
+    <script src="https://unpkg.com/@jspsych/extension-pipe"></script>
     <!-- jsPsych packages -->
     <script src="jspsych-7.3/dist/jspsych.js"></script>
     <script src="jspsych-7.3/dist/plugin-html-button-response.js"></script>
@@ -145,88 +145,76 @@ Contact: pelin.tan@utoronto.ca
   <body></body>
   <script>
     /* ############################################################################
-                INITIALIZE JSPSYCH
-    ############################################################################ */
-    var jsPsych = initJsPsych({
-      override_safe_mode: true,
-      on_finish: function () {
-        jsPsych.data.displayData("csv");
-      },
-    });
+            PARTICIPANT ID COLLECTION - PROLIFIC
+############################################################################ */
+    function generateRandomID(length) {
+      var chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      var result = "";
+      for (var i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
 
-    /* ############################################################################
-                PARTICIPANT ID COLLECTION - PROLIFIC
-    ############################################################################ */
-
-    /* Create variables for each participant */
     var subject_id = getQueryVariable("PROLIFIC_PID");
     var study_id = getQueryVariable("STUDY_ID");
     var session_id = getQueryVariable("SESSION_ID");
-    var randomizer_id = jsPsych.randomization.randomID(6);
-
+    var randomizer_id = generateRandomID(6);
     var prolific_random_id = subject_id + "_" + randomizer_id;
 
-    /* Add participant Prolific Random ID to data */
-    jsPsych.data.addProperties({
-      subject_id: subject_id,
-      study_id: study_id,
-      session_id: session_id,
-      randomizer_id: randomizer_id,
-    });
-
     /* ############################################################################
-                CONDITION ASSIGNMENT: STRANGER vs. FRIEND
-    ############################################################################ */
-    /* Between-subjects manipulation: each participant is assigned to ONE
-               condition and stays in it for the whole study.
-                 - "stranger": the poster is a stranger; participant judges them the
-                   way people do on Reddit's AITA community.
-                 - "friend": the poster is imagined as one of the participant's
-                   own close friends, personally confiding the situation to them.
-
-               For piloting/testing, force a condition with ?condition=stranger
-               (or ?condition=friend) in the URL. Otherwise participants are
-               assigned at random with equal probability. */
+            CONDITION ASSIGNMENT: STRANGER vs. FRIEND
+############################################################################ */
     var STUDY_CONDITIONS = ["stranger", "friend"];
-
     var study_condition = getQueryVariable("condition");
     if (STUDY_CONDITIONS.indexOf(study_condition) === -1) {
-      study_condition = jsPsych.randomization.sampleWithoutReplacement(
-        STUDY_CONDITIONS,
-        1,
-      )[0];
+      study_condition =
+        STUDY_CONDITIONS[Math.floor(Math.random() * STUDY_CONDITIONS.length)];
     }
 
-    /* Short label shown above every scenario, and the phrase used when
-               referring to the poster in the judgment questions. Keeping these
-               in one place means the manipulation only needs to be changed here
-               if the wording needs to change later. */
     var CONDITION_TEXT = {
-      stranger: {
-        posterTag: "A stranger tells you:",
-        target: "stranger",
-      },
-      friend: {
-        posterTag: "Your friend tells you:",
-        target: "friend",
-      },
+      stranger: { posterTag: "A stranger tells you:", target: "stranger" },
+      friend: { posterTag: "Your friend tells you:", target: "friend" },
     };
-
-    jsPsych.data.addProperties({
-      study_condition: study_condition,
-    });
 
     var CREDIT_URLS = {
       stranger: "https://app.prolific.com/submissions/complete?cc=C269V0BT",
       friend: "https://app.prolific.com/submissions/complete?cc=CIKEV3LE",
     };
-
     var credit_url = CREDIT_URLS[study_condition];
 
     var EXPERIMENT_IDS = {
       stranger: "6vFcOODDcrqo",
       friend: "LaEtDTneKxa1",
     };
+
+    /* ############################################################################
+            INITIALIZE JSPSYCH
+############################################################################ */
+    var jsPsych = initJsPsych({
+      override_safe_mode: true,
+      extensions: [
+        {
+          type: jsPsychExtensionPipe,
+          params: {
+            experiment_id: EXPERIMENT_IDS[study_condition],
+            filename: () => prolific_random_id + ".csv",
+          },
+        },
+      ],
+      on_finish: function () {
+        jsPsych.data.displayData("csv");
+      },
+    });
+
+    jsPsych.data.addProperties({
+      subject_id: subject_id,
+      study_id: study_id,
+      session_id: session_id,
+      randomizer_id: randomizer_id,
+      study_condition: study_condition,
+    });
 
     /* ############################################################################
                 WELCOME PAGE & BOT CHECK
@@ -765,14 +753,6 @@ Contact: pelin.tan@utoronto.ca
       timeline_variables: AITA_Stim_10,
     };
 
-    var checkpoint_save = {
-      type: jsPsychPipe,
-      action: "save",
-      experiment_id: EXPERIMENT_IDS[study_condition],
-      filename: prolific_random_id + "_checkpoint.csv",
-      data_string: () => jsPsych.data.get().csv(),
-    };
-
     /* ############################################################################
                 POST-EXPERIMENT QUESTIONNAIRE
     ############################################################################ */
@@ -927,15 +907,6 @@ Contact: pelin.tan@utoronto.ca
     /* ############################################################################
                 ENDING EXPERIMENT
     ############################################################################ */
-
-    // Give time to save data
-    var save_data = {
-      type: jsPsychPipe,
-      action: "save",
-      experiment_id: EXPERIMENT_IDS[study_condition],
-      filename: prolific_random_id + ".csv",
-      data_string: () => jsPsych.data.get().csv(),
-    };
 
     var second_to_last_trial = {
       type: jsPsychHtmlKeyboardResponse,
