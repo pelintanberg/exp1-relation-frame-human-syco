@@ -3,7 +3,9 @@ This file contains the main file for running the Sycophancy in Humans
 Experiment using the JSPsych library 7.3.1.
 
 This code pertains to the Exp 1: AITA ratings by humans depending on relationship
-(stranger condition vs. friend condition, between-subjects).
+(stranger condition vs. friend condition vs. unprompted control condition,
+between-subjects). Note: "stranger" in the code is the "judge" condition in the
+preregistration; the label is kept so saved condition values stay consistent.
 
 Author: Pelin Tanberg
 Date: 17th August 2026
@@ -164,9 +166,9 @@ Contact: pelin.tan@utoronto.ca
     var prolific_random_id = subject_id + "_" + randomizer_id;
 
     /* ############################################################################
-            CONDITION ASSIGNMENT: STRANGER vs. FRIEND
+            CONDITION ASSIGNMENT: STRANGER vs. FRIEND vs. UNPROMPTED
 ############################################################################ */
-    var STUDY_CONDITIONS = ["stranger", "friend"];
+    var STUDY_CONDITIONS = ["stranger", "friend", "unprompted"];
     var study_condition = getQueryVariable("condition");
     if (STUDY_CONDITIONS.indexOf(study_condition) === -1) {
       study_condition =
@@ -176,17 +178,20 @@ Contact: pelin.tan@utoronto.ca
     var CONDITION_TEXT = {
       stranger: { posterTag: "A stranger tells you:", target: "stranger" },
       friend: { posterTag: "Your friend tells you:", target: "friend" },
+      unprompted: { posterTag: "Scenario:", target: "the person" },
     };
 
     var CREDIT_URLS = {
       stranger: "https://app.prolific.com/submissions/complete?cc=C269V0BT",
       friend: "https://app.prolific.com/submissions/complete?cc=CIKEV3LE",
+      unprompted: "https://app.prolific.com/submissions/complete?cc=C1GE7TZD",
     };
     var credit_url = CREDIT_URLS[study_condition];
 
     var EXPERIMENT_IDS = {
       stranger: "6vFcOODDcrqo",
       friend: "LaEtDTneKxa1",
+      unprompted: "6RaAz2LxgMip",
     };
 
     /* ############################################################################
@@ -432,6 +437,49 @@ Contact: pelin.tan@utoronto.ca
       choices: [" "],
     };
 
+    /* --- UNPROMPTED/CONTROL CONDITION: NO relationship framing ---
+               Participants are not told who wrote the situations and are not
+               asked to think about any person. To match the effort of the
+               stranger and friend write-ins, they first recall and briefly
+               describe an ordinary personal episode: the last time they ran
+               an everyday errand. Like the other two write-ins, this is a
+               single free-text response. The content is deliberately neutral
+               (no other people, no opinions, no comparing or choosing) so it
+               does not prompt an evaluative stance before the judgment task. */
+    var unprompted_framing_writein = {
+      type: jsPsychSurveyText,
+      questions: [
+        {
+          prompt: `<p>Before you begin, please think about the last time you went out to run an everyday errand, such as going to a grocery store, a pharmacy, or the post office.</p>
+                        <p>In the box below, briefly describe what the errand was, where you went, and what you did there, from the moment you arrived until you left.</p>`,
+          rows: 5,
+          columns: 60,
+          required: true,
+        },
+      ],
+      button_label: "Continue",
+      data: { trial_kind: "condition_framing_writein" },
+      on_finish: function () {
+        var dat = jsPsych.data.getLastTrialData().values()[0];
+        dat.condition_framing_writein = dat.response["Q0"];
+        /*saveData(prolific_random_id + ".csv", jsPsych.data.get().csv());*/
+      },
+    };
+
+    var unprompted_framing_role = {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `
+                    <p>For the rest of this study, you will read situations that others have experienced. </p>
+                    <p>Your task is to <b>evaluate their behaviour</b> and to decide whether what the person described in the situation was right or wrong, and whether their actions in the situation were justified.</p>
+                    <p>Press the SPACE bar to continue.</p>
+                `,
+      choices: [" "],
+    };
+
+    var unprompted_condition_framing = {
+      timeline: [unprompted_framing_writein, unprompted_framing_role],
+    };
+
     /* --- STRANGER CONDITION: framing manipulation ---
                A neutral "imagine and evaluate" warm-up (rating something
                impersonal, not a person), so both conditions do an equivalent
@@ -512,10 +560,11 @@ Contact: pelin.tan@utoronto.ca
     /* study_condition is resolved before jsPsych.run(), so we can pick
                the right framing timeline directly (no conditional_function
                needed). */
-    var condition_framing_timeline =
-      study_condition === "friend"
-        ? friend_condition_framing.timeline
-        : stranger_condition_framing.timeline;
+    var condition_framing_timeline = {
+      stranger: stranger_condition_framing,
+      friend: friend_condition_framing,
+      unprompted: unprompted_condition_framing,
+    }[study_condition].timeline;
 
     /* Generic trial-procedure walkthrough: identical for both conditions. */
     var instructions_procedure = {
@@ -534,8 +583,11 @@ Contact: pelin.tan@utoronto.ca
     var instructions_begin = {
       type: jsPsychHtmlKeyboardResponse,
       stimulus: function () {
-        var target =
-          study_condition === "friend" ? "your friend's" : "the stranger's";
+        var target = {
+          stranger: "the stranger's",
+          friend: "your friend's",
+          unprompted: "the person's",
+        }[study_condition];
         return `
                         <p><b>You are now ready to begin.</b></p>
                         <p>Remember: you are evaluating ${target} actions in the situation they are describing.</p>
@@ -590,7 +642,9 @@ Contact: pelin.tan@utoronto.ca
           stimulus: function () {
             var cond = CONDITION_TEXT[study_condition];
             return (
-              `<p class="poster-tag">${cond.posterTag}</p>` +
+              (cond.posterTag
+                ? `<p class="poster-tag">${cond.posterTag}</p>`
+                : "") +
               `<div class="aita-post">` +
               jsPsych.timelineVariable("post_text") +
               `</div>`
@@ -774,7 +828,14 @@ Contact: pelin.tan@utoronto.ca
         {
           prompt:
             "Throughout this study, who did you imagine the situations were being told to you by?",
-          options: ["A stranger posting online", "One of my own close friends"],
+          options:
+            study_condition === "unprompted"
+              ? [
+                  "A stranger posting online",
+                  "One of my own close friends",
+                  "No one in particular",
+                ]
+              : ["A stranger posting online", "One of my own close friends"],
           name: "comprehension",
           required: true,
         },
@@ -965,8 +1026,8 @@ Contact: pelin.tan@utoronto.ca
       welcome_screen,
       bot_check,
       information_consent,
-      enterscreen,
       PROLIFIC_ID,
+      enterscreen,
       demographics,
       pause,
 
@@ -993,6 +1054,19 @@ Contact: pelin.tan@utoronto.ca
       credit_trial,
     ];
 
-    jsPsych.run(timeline);
+    /* Safety check: do not start a session while the Prolific completion code
+       or DataPipe experiment ID for this condition is still a placeholder
+       (otherwise a participant's data would not be saved). */
+    var config_incomplete =
+      EXPERIMENT_IDS[study_condition].indexOf("REPLACE") === 0 ||
+      CREDIT_URLS[study_condition].indexOf("REPLACE") !== -1;
+    if (config_incomplete) {
+      document.body.innerHTML =
+        "<p>Study configuration incomplete: add the Prolific completion code and DataPipe experiment ID for the '" +
+        study_condition +
+        "' condition.</p>";
+    } else {
+      jsPsych.run(timeline);
+    }
   </script>
 </html>
